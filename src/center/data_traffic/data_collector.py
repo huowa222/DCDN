@@ -3,6 +3,7 @@
 import pika
 import json
 import mysql.connector
+import redis
 
 # RabbitMQ configuration
 RABBITMQ_CONFIG = {
@@ -136,6 +137,33 @@ def callback(ch, method, properties, body):
             cursor.close()
             connection.close()
 
+# Connect to the Redis server
+r = redis.Redis(host='localhost', port=6379, db=0)
+
+def callback2(ch, method, properties, body):
+    """
+    Process the message received from RabbitMQ and insert the data into the redis.
+    """
+    try:
+        data = json.loads(body)
+        source_ip = data.get('source_ip')
+        dest_ip = data.get('dest_ip')
+        packet_loss_rate = data.get('packet_loss_rate')
+        rtt = data.get('rtt')
+        success_rate = data.get('success_rate')
+        load = data.get('load')
+        bandwidth_watermark = data.get('bandwidth_watermark')
+
+        packet_loss_rate = ewma_values(packet_loss_rate);
+        rtt = ewma_values(rtt);
+        success_rate = ewma_values(success_rate);
+        load = ewma_values(load);
+
+        val = a * packet_loss_rate + b * rtt + c * success_rate + d * load
+        # Create (set a key-value pair)
+        key = source_ip + dest_ip
+        # Assume this is the weight of the edge
+        r.set(key, value)
 
 def receive_from_rabbitmq():
     """
